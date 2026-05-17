@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root { --bg: #f4f3ef; --card: #fff; --border: #e8e5e0; --green: #34c759; --red: #ff3b30; --blue: #007aff; --text: #1a1a1a; --sub: #888; --light: #f7f5f0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+
+  header { padding: 20px 16px 12px; background: var(--bg); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
+  .header-row { display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; font-weight: 600; }
+  .date-label { font-size: 13px; color: var(--sub); }
+  .sync-status { font-size: 11px; padding: 3px 8px; border-radius: 99px; margin-top: 6px; display: inline-block; }
+  .sync-ok { background: #e8f9ee; color: #2e8a5a; }
+  .sync-err { background: #fde8e8; color: #c0392b; }
+  .sync-ing { background: #e8f0fe; color: #2e66a8; }
+
+  .ring-section { padding: 20px 16px 0; display: flex; align-items: center; gap: 20px; }
+  .ring-wrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+  svg.ring { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  .ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-cal { font-size: 22px; font-weight: 600; line-height: 1; }
+  .ring-lbl { font-size: 10px; color: var(--sub); margin-top: 2px; }
+  .ring-stats { flex: 1; }
+  .stat-row { margin-bottom: 10px; }
+  .stat-top { display: flex; justify-content: space-between; }
+  .stat-name { font-size: 13px; color: var(--sub); }
+  .stat-val { font-size: 14px; font-weight: 500; }
+  .stat-bar { height: 4px; background: var(--border); border-radius: 99px; margin-top: 4px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--sub); padding: 16px 16px 8px; }
+  .meal-card { margin: 0 16px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .meal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; }
+  .meal-left { display: flex; align-items: center; gap: 10px; }
+  .meal-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-orange { background: #ff9500; }
+  .dot-teal { background: #30b0c7; }
+  .dot-blue { background: #5b9bd5; }
+  .dot-purple { background: #af52de; }
+  .meal-title { font-size: 15px; font-weight: 500; }
+  .meal-cal-badge { font-size: 13px; font-weight: 600; color: var(--sub); }
+  .meal-cal-badge.logged { color: var(--text); }
+  .meal-items { border-top: 1px solid var(--border); display: none; }
+  .meal-items.open { display: block; }
+  .food-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid #f5f2ee; cursor: pointer; }
+  .food-item:last-child { border-bottom: none; }
+  .food-check { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; border: 2px solid #d0cdc8; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .food-item.selected .food-check { background: var(--green); border-color: var(--green); }
+  .food-check svg { display: none; }
+  .food-item.selected .food-check svg { display: block; }
+  .food-name { font-size: 14px; flex: 1; }
+  .food-item.selected .food-name { color: var(--sub); }
+  .food-cal { font-size: 13px; color: var(--sub); font-weight: 500; }
+  .custom-row { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #f5f2ee; }
+  .custom-input { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--light); color: var(--text); }
+  .custom-cal { width: 70px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--light); color: var(--text); }
+  .add-btn { background: var(--text); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; }
+
+  .note-section { margin: 0 16px; }
+  .note-input { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--card); resize: none; height: 70px; color: var(--text); }
+
+  .bottom-btns { display: flex; gap: 10px; margin: 16px 16px 0; }
+  .reset-btn { flex: 1; background: none; border: 1.5px solid var(--border); border-radius: 99px; padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--sub); cursor: pointer; }
+  .history-btn { flex: 1; background: none; border: 1.5px solid var(--border); border-radius: 99px; padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--blue); cursor: pointer; }
+
+  /* History modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-height: 80vh; overflow-y: auto; padding: 20px 16px 40px; }
+  .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  .history-day { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .history-day-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--light); cursor: pointer; }
+  .history-day-date { font-size: 14px; font-weight: 500; }
+  .history-day-cal { font-size: 13px; color: var(--sub); }
+  .history-day-items { display: none; padding: 8px 14px; }
+  .history-day-items.open { display: block; }
+  .history-item { font-size: 13px; color: var(--sub); padding: 4px 0; border-bottom: 1px solid #f5f2ee; display: flex; justify-content: space-between; }
+  .history-item:last-child { border-bottom: none; }
+  .close-btn { display: block; margin: 16px auto 0; background: var(--text); color: #fff; border: none; border-radius: 99px; padding: 10px 32px; font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer; }
+
+  .over { color: var(--red) !important; }
+  .good { color: var(--green) !important; }
+  .loading { text-align: center; padding: 20px; color: var(--sub); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <h1>📊 Daily Tracker</h1>
+    <div class="date-label" id="dateLabel"></div>
+  </div>
+  <span class="sync-status sync-ing" id="syncStatus">Connecting...</span>
+</header>
+
+<div class="ring-section">
+  <div class="ring-wrap">
+    <svg class="ring" width="100" height="100" viewBox="0 0 100 100">
+      <circle class="ring-bg" cx="50" cy="50" r="42"/>
+      <circle class="ring-fill" id="ringFill" cx="50" cy="50" r="42" stroke="#007aff" stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+    </svg>
+    <div class="ring-center">
+      <div class="ring-cal" id="totalCal">0</div>
+      <div class="ring-lbl">calories</div>
+    </div>
+  </div>
+  <div class="ring-stats">
+    <div class="stat-row">
+      <div class="stat-top"><span class="stat-name">Goal</span><span class="stat-val" id="remainCal">1,950 left</span></div>
+      <div class="stat-bar"><div class="stat-bar-fill" id="goalBar" style="width:0%;background:#007aff"></div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-top"><span class="stat-name">Protein</span><span class="stat-val" id="proteinVal">0g / 120g</span></div>
+      <div class="stat-bar"><div class="stat-bar-fill" id="proteinBar" style="width:0%;background:#34c759"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="mealSections"></div>
+
+<div class="section-title">Notes</div>
+<div class="note-section">
+  <textarea class="note-input" id="noteInput" placeholder="Off-plan meal, how you felt, anything to remember..."></textarea>
+</div>
+
+<div class="bottom-btns">
+  <button class="history-btn" onclick="openHistory()">View history</button>
+  <button class="reset-btn" onclick="resetDay()">Reset today</button>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-title">Past Days</div>
+    <div id="historyContent"><div class="loading">Loading...</div></div>
+    <button class="close-btn" onclick="closeHistory()">Close</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kgqdareooarbwkbcvelm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_onG_9sDQMq8T52NOpGbB9w_humLNWi4';
+const GOAL_CAL = 1950;
+const GOAL_PRO = 120;
+const TODAY = new Date().toISOString().split('T')[0];
+
+const meals = [
+  { id: 'breakfast', title: 'Breakfast', dot: 'dot-orange', items: [
+    { name: 'Egg white omelette (peppers, onion, ham)', cal: 260, pro: 35 },
+    { name: 'Fruit (banana, berries, etc.)', cal: 80, pro: 1 },
+    { name: 'Whole wheat toast', cal: 70, pro: 3 },
+  ]},
+  { id: 'lunch', title: 'Lunch', dot: 'dot-teal', items: [
+    { name: 'Turkey wrap + side salad (ranch)', cal: 500, pro: 32 },
+    { name: 'Grilled chicken Caesar salad', cal: 480, pro: 38 },
+    { name: 'Tuna salad + Triscuits + cucumber', cal: 490, pro: 34 },
+    { name: 'Big salad + grilled chicken + dressing', cal: 510, pro: 40 },
+  ]},
+  { id: 'snacks', title: 'Snacks', dot: 'dot-purple', items: [
+    { name: 'Yogurt + granola', cal: 200, pro: 6 },
+    { name: 'String cheese + apple', cal: 200, pro: 8 },
+    { name: 'Almonds + banana', cal: 260, pro: 7 },
+    { name: 'PB + Triscuits (6)', cal: 230, pro: 6 },
+    { name: 'Hummus + carrots', cal: 100, pro: 3 },
+  ]},
+  { id: 'dinner', title: 'Dinner', dot: 'dot-blue', items: [
+    { name: 'Ground beef tacos', cal: 570, pro: 38 },
+    { name: 'Homemade lasagna + side salad', cal: 550, pro: 35 },
+    { name: 'Chicken teriyaki + steamed rice', cal: 560, pro: 42 },
+    { name: 'Pork tenderloin + rice pilaf + green beans', cal: 570, pro: 44 },
+    { name: 'Air fryer chicken tenders + sweet potato fries', cal: 540, pro: 38 },
+    { name: 'Beef taco bar', cal: 570, pro: 38 },
+    { name: 'Sheet pan chicken + roasted potatoes + carrots', cal: 580, pro: 46 },
+  ]},
+];
+
+// Supabase helpers
+async function sbFetch(method, path, body) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : ''
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : [];
+}
+
+async function loadToday() {
+  return sbFetch('GET', `food_log2?log_date=eq.${TODAY}&order=id.asc`);
+}
+
+async function saveItem(meal, foodName, calories, isCustom) {
+  return sbFetch('POST', 'food_log2', { log_date: TODAY, meal, food_name: foodName, calories, is_custom: isCustom, note: '' });
+}
+
+async function deleteItem(meal, foodName) {
+  return sbFetch('DELETE', `food_log2?log_date=eq.${TODAY}&meal=eq.${encodeURIComponent(meal)}&food_name=eq.${encodeURIComponent(foodName)}&is_custom=eq.false`);
+}
+
+async function deleteCustomItem(id) {
+  return sbFetch('DELETE', `food_log2?id=eq.${id}`);
+}
+
+async function saveNote(note) {
+  // Store note as a special row
+  await sbFetch('DELETE', `food_log22?log_date=eq.${TODAY}&meal=eq.note`);
+  if (note.trim()) await sbFetch('POST', 'food_log2', { log_date: TODAY, meal: 'note', food_name: note, calories: 0, is_custom: false });
+}
+
+async function loadHistory() {
+  return sbFetch('GET', `food_log2?log_date=neq.${TODAY}&order=log_date.desc`);
+}
+
+// State
+let todayRows = [];
+let totalCal = 0;
+let totalPro = 0;
+
+function isSelected(mealId, itemName) {
+  return todayRows.some(r => r.meal === mealId && r.food_name === itemName && !r.is_custom);
+}
+
+function getCustomItems(mealId) {
+  return todayRows.filter(r => r.meal === mealId && r.is_custom);
+}
+
+function recalc() {
+  totalCal = 0; totalPro = 0;
+  meals.forEach(m => {
+    m.items.forEach(item => {
+      if (isSelected(m.id, item.name)) { totalCal += item.cal; totalPro += item.pro; }
+    });
+    getCustomItems(m.id).forEach(r => { totalCal += r.calories; });
+  });
+  updateRing();
+  meals.forEach(m => updateBadge(m.id));
+}
+
+function updateRing() {
+  const pct = Math.min(totalCal / GOAL_CAL, 1);
+  const circ = 263.9;
+  document.getElementById('ringFill').style.strokeDashoffset = circ - circ * pct;
+  document.getElementById('ringFill').style.stroke = totalCal > GOAL_CAL ? '#ff3b30' : '#007aff';
+  document.getElementById('totalCal').textContent = totalCal.toLocaleString();
+  document.getElementById('totalCal').className = 'ring-cal' + (totalCal > GOAL_CAL ? ' over' : '');
+  const left = GOAL_CAL - totalCal;
+  const el = document.getElementById('remainCal');
+  el.textContent = left < 0 ? Math.abs(left) + ' over' : left.toLocaleString() + ' left';
+  el.className = 'stat-val' + (left < 0 ? ' over' : left < 200 ? ' good' : '');
+  document.getElementById('goalBar').style.width = pct * 100 + '%';
+  document.getElementById('goalBar').style.background = totalCal > GOAL_CAL ? '#ff3b30' : '#007aff';
+  const proPct = Math.min(totalPro / GOAL_PRO, 1);
+  document.getElementById('proteinBar').style.width = proPct * 100 + '%';
+  document.getElementById('proteinVal').textContent = totalPro + 'g / ' + GOAL_PRO + 'g';
+}
+
+function updateBadge(mealId) {
+  const meal = meals.find(m => m.id === mealId);
+  let cal = 0;
+  meal.items.forEach(item => { if (isSelected(mealId, item.name)) cal += item.cal; });
+  getCustomItems(mealId).forEach(r => cal += r.calories);
+  const badge = document.getElementById('badge_' + mealId);
+  badge.textContent = cal > 0 ? cal + ' cal' : '—';
+  badge.className = 'meal-cal-badge' + (cal > 0 ? ' logged' : '');
+}
+
+function renderCustomList(mealId) {
+  const container = document.getElementById('custom_list_' + mealId);
+  container.innerHTML = '';
+  getCustomItems(mealId).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'food-item selected';
+    div.style.cursor = 'default';
+    div.innerHTML = `<div class="food-check" style="background:#ff9500;border-color:#ff9500;"><svg width="10" height="8" viewBox="0 0 12 10" fill="none" style="display:block"><path d="M1 5L4.5 8.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="food-name" style="color:#888;">${r.food_name}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="food-cal">${r.calories} cal</div>
+        <div onclick="removeCustom(${r.id},'${mealId}')" style="color:#ff3b30;font-size:20px;cursor:pointer;line-height:1;">×</div>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+async function toggleItem(mealId, idx) {
+  const meal = meals.find(m => m.id === mealId);
+  const item = meal.items[idx];
+  const sel = isSelected(mealId, item.name);
+  setSyncStatus('syncing');
+  try {
+    if (sel) {
+      await deleteItem(mealId, item.name);
+      todayRows = todayRows.filter(r => !(r.meal === mealId && r.food_name === item.name && !r.is_custom));
+    } else {
+      const rows = await saveItem(mealId, item.name, item.cal, false);
+      todayRows.push(rows[0]);
+    }
+    const el = document.querySelector(`[data-key="${mealId}_${idx}"]`);
+    if (isSelected(mealId, item.name)) el.classList.add('selected');
+    else el.classList.remove('selected');
+    recalc();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('err'); }
+}
+
+async function addCustom(mealId) {
+  const nameEl = document.getElementById('custom_name_' + mealId);
+  const calEl = document.getElementById('custom_cal_' + mealId);
+  const name = nameEl.value.trim();
+  const cal = parseInt(calEl.value);
+  if (!name || isNaN(cal) || cal <= 0) return;
+  setSyncStatus('syncing');
+  try {
+    const rows = await saveItem(mealId, name, cal, true);
+    todayRows.push(rows[0]);
+    nameEl.value = ''; calEl.value = '';
+    renderCustomList(mealId);
+    recalc();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('err'); }
+}
+
+async function removeCustom(id, mealId) {
+  setSyncStatus('syncing');
+  try {
+    await deleteCustomItem(id);
+    todayRows = todayRows.filter(r => r.id !== id);
+    renderCustomList(mealId);
+    recalc();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('err'); }
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (state === 'ok') { el.textContent = '✓ Synced'; el.className = 'sync-status sync-ok'; }
+  else if (state === 'err') { el.textContent = '✗ Sync error'; el.className = 'sync-status sync-err'; }
+  else { el.textContent = 'Syncing...'; el.className = 'sync-status sync-ing'; }
+}
+
+function toggleMealItems(mealId) {
+  document.getElementById('items_' + mealId).classList.toggle('open');
+}
+
+async function openHistory() {
+  document.getElementById('historyModal').classList.add('open');
+  const content = document.getElementById('historyContent');
+  content.innerHTML = '<div class="loading">Loading history...</div>';
+  try {
+    const rows = await loadHistory();
+    if (!rows.length) { content.innerHTML = '<div class="loading">No history yet.</div>'; return; }
+    // Group by date
+    const byDate = {};
+    rows.forEach(r => {
+      if (r.meal === 'note') return;
+      if (!byDate[r.log_date]) byDate[r.log_date] = [];
+      byDate[r.log_date].push(r);
+    });
+    content.innerHTML = '';
+    Object.keys(byDate).sort().reverse().forEach(date => {
+      const items = byDate[date];
+      const dayCal = items.reduce((s, r) => s + r.calories, 0);
+      const d = new Date(date + 'T12:00:00');
+      const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const div = document.createElement('div');
+      div.className = 'history-day';
+      let itemsHtml = items.map(r => `<div class="history-item"><span>${r.food_name}</span><span>${r.calories} cal</span></div>`).join('');
+      div.innerHTML = `<div class="history-day-header" onclick="this.nextSibling.classList.toggle('open')">
+        <span class="history-day-date">${label}</span>
+        <span class="history-day-cal">${dayCal.toLocaleString()} cal</span>
+      </div>
+      <div class="history-day-items">${itemsHtml}</div>`;
+      content.appendChild(div);
+    });
+  } catch(e) { content.innerHTML = '<div class="loading">Error loading history.</div>'; }
+}
+
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('open');
+}
+
+async function resetDay() {
+  if (!confirm('Reset today\'s log?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sbFetch('DELETE', `food_log2?log_date=eq.${TODAY}`);
+    todayRows = [];
+    document.querySelectorAll('.food-item.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('[id^="custom_list_"]').forEach(el => el.innerHTML = '');
+    document.getElementById('noteInput').value = '';
+    recalc();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('err'); }
+}
+
+async function init() {
+  const d = new Date();
+  document.getElementById('dateLabel').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  // Build meal UI
+  const container = document.getElementById('mealSections');
+  meals.forEach(meal => {
+    let itemsHtml = meal.items.map((item, i) =>
+      `<div class="food-item" data-key="${meal.id}_${i}" onclick="toggleItem('${meal.id}',${i})">
+        <div class="food-check"><svg width="10" height="8" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="food-name">${item.name}</div>
+        <div class="food-cal">${item.cal} cal</div>
+      </div>`).join('');
+
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="section-title">${meal.title}</div>
+    <div class="meal-card">
+      <div class="meal-header" onclick="toggleMealItems('${meal.id}')">
+        <div class="meal-left"><div class="meal-dot ${meal.dot}"></div><div class="meal-title">${meal.title}</div></div>
+        <div class="meal-cal-badge" id="badge_${meal.id}">—</div>
+      </div>
+      <div class="meal-items" id="items_${meal.id}">
+        ${itemsHtml}
+        <div id="custom_list_${meal.id}"></div>
+        <div class="custom-row">
+          <input class="custom-input" id="custom_name_${meal.id}" placeholder="Add other food..." />
+          <input class="custom-cal" id="custom_cal_${meal.id}" type="number" placeholder="cal" />
+          <button class="add-btn" onclick="addCustom('${meal.id}')">Add</button>
+        </div>
+      </div>
+    </div>`;
+    container.appendChild(sec);
+  });
+
+  // Load today from Supabase
+  try {
+    todayRows = await loadToday();
+    // Restore checkboxes
+    meals.forEach(meal => {
+      meal.items.forEach((item, i) => {
+        if (isSelected(meal.id, item.name)) {
+          document.querySelector(`[data-key="${meal.id}_${i}"]`).classList.add('selected');
+        }
+      });
+      renderCustomList(meal.id);
+    });
+    // Restore note
+    const noteRow = todayRows.find(r => r.meal === 'note');
+    if (noteRow) document.getElementById('noteInput').value = noteRow.food_name;
+    recalc();
+    setSyncStatus('ok');
+  } catch(e) {
+    setSyncStatus('err');
+  }
+
+  // Note autosave
+  let noteTimer;
+  document.getElementById('noteInput').addEventListener('input', () => {
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => saveNote(document.getElementById('noteInput').value), 1000);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
