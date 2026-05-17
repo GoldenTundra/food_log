@@ -8,7 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root { --bg: #f4f3ef; --card: #fff; --border: #e8e5e0; --green: #34c759; --red: #ff3b30; --blue: #007aff; --text: #1a1a1a; --sub: #888; --light: #f7f5f0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; visibility: hidden; }
 
   header { padding: 20px 16px 12px; background: var(--bg); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
   .header-row { display: flex; justify-content: space-between; align-items: center; }
@@ -216,7 +216,7 @@ async function deleteCustomItem(id) {
 
 async function saveNote(note) {
   // Store note as a special row
-  await sbFetch('DELETE', `food_log22?log_date=eq.${TODAY}&meal=eq.note`);
+  await sbFetch('DELETE', `food_log2?log_date=eq.${TODAY}&meal=eq.note`);
   if (note.trim()) await sbFetch('POST', 'food_log2', { log_date: TODAY, meal: 'note', food_name: note, calories: 0, is_custom: false });
 }
 
@@ -468,7 +468,46 @@ async function init() {
   });
 }
 
-init();
+// Auth gate — check ?key=VALUE against auth table before loading
+async function checkAuth() {
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get('key');
+
+  if (!key) { showBlocked(); return false; }
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/auth?auth_key=eq.' + encodeURIComponent(key) + '&limit=1', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    const data = await res.json();
+    if (data && data.length > 0) return true;
+    showBlocked(); return false;
+  } catch(e) {
+    showBlocked(); return false;
+  }
+}
+
+function showBlocked() {
+  document.body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'DM Sans',sans-serif;background:#f4f3ef;color:#1a1a1a;padding:32px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:8px;">Access Denied</div>
+      <div style="font-size:14px;color:#888;">Invalid or missing access key.</div>
+    </div>`;
+}
+
+async function start() {
+  const authed = await checkAuth();
+  if (authed) {
+    document.body.style.visibility = 'visible';
+    init();
+  }
+}
+
+start();
 </script>
 </body>
 </html>
